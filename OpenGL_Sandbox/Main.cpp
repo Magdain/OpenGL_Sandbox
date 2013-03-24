@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/type_ptr.hpp>
 using glm::vec3;
 using glm::mat4;
@@ -66,6 +67,8 @@ void ErrorCheckProgram(GLuint program) {
 int main() {
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_SetVideoMode(800, 600, 16, SDL_OPENGL);
+	SDL_WM_GrabInput(SDL_GRAB_ON);
+	SDL_ShowCursor(false);
 	SDL_Event event;
 
 
@@ -95,9 +98,18 @@ int main() {
 
 
 	vec3 vertices[] = {
-		vec3( 0.0f,  1.0f, 0.0f),
-		vec3(-1.0f, -1.0f, 0.0f),
-		vec3( 1.0f, -1.0f, 0.0f),
+		// The camera's Z value is negated when constructing our view matrix so that our
+		// world space is left handed, however our model vertices are still right handed.
+
+		vec3(-1.0f,  1.0f, -1.0f), // back
+		vec3( 1.0f,  1.0f, -1.0f),
+		vec3( 1.0f, -1.0f, -1.0f),
+		vec3(-1.0f, -1.0f, -1.0f),
+
+		vec3(-1.0f,  1.0f, 1.0f), // front
+		vec3( 1.0f,  1.0f, 1.0f),
+		vec3( 1.0f, -1.0f, 1.0f),
+		vec3(-1.0f, -1.0f, 1.0f),
 	};
 	GLuint vbo;
 	glGenBuffers(1, &vbo);
@@ -111,7 +123,10 @@ int main() {
 
 
 	GLushort indices[] = {
-		0, 1, 2,
+		0, 1, 2, // back
+		2, 3, 0,
+		4, 5, 6, // front
+		6, 7, 4,
 	};
 	GLuint ibo;
 	glGenBuffers(1, &ibo);
@@ -122,6 +137,7 @@ int main() {
 	vec3 camera_position(0.0f, 0.0f, -5.0f);
 	vec3 camera_target(0.0f, 0.0f, 1.0f);
 	vec3 camera_up(0.0f, 1.0f, 0.0f);
+	glm::vec2 camera_rotation;
 
 	mat4 model(1.0f);
 	mat4 view = glm::lookAt(camera_position, camera_target, camera_up);
@@ -138,6 +154,8 @@ int main() {
 	if (u_projection == -1) std::cout << "failed to find uniform 'projection'" << std::endl;
 	glUniformMatrix4fv(u_projection, 1, GL_FALSE, glm::value_ptr(projection));
 
+	vec3 negate_z(1.0f, 1.0f, -1.0f);
+
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -145,7 +163,7 @@ int main() {
 	bool running = true;
 	while (running) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, nullptr);
+		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
 		SDL_GL_SwapBuffers();
 
 
@@ -158,16 +176,20 @@ int main() {
 		if (keys[SDLK_s])
 			movement -= norm_target;
 		if (keys[SDLK_a])
-			movement -= glm::cross(norm_target, camera_up);
-		if (keys[SDLK_d])
 			movement += glm::cross(norm_target, camera_up);
+		if (keys[SDLK_d])
+			movement -= glm::cross(norm_target, camera_up);
 
 		glm::normalize(movement);
 		movement *= 6.0f * 0.02f;
 		camera_position += movement;
-		camera_target = camera_position + vec3(0.0f, 0.0f, 1.0f);
 
-		view = glm::lookAt(camera_position, camera_target, camera_up);
+		vec3 new_target(0.0f, 0.0f, 1.0f);
+		new_target = glm::rotate(new_target, camera_rotation.x, vec3(1.0f, 0.0f, 0.0f));
+		new_target = glm::rotate(new_target, camera_rotation.y, vec3(0.0f, 1.0f, 0.0f));
+		camera_target = camera_position + new_target;
+
+		view = glm::lookAt(camera_position * negate_z, camera_target * negate_z, camera_up);
 		glUniformMatrix4fv(u_view, 1, GL_FALSE, glm::value_ptr(view));
 
 
@@ -177,6 +199,17 @@ int main() {
 			if (event.type == SDL_KEYDOWN) {
 				if (event.key.keysym.sym == SDLK_ESCAPE)
 					running = false;
+			}
+			if (event.type == SDL_MOUSEMOTION) {
+				if (event.motion.x != event.motion.xrel && event.motion.y != event.motion.yrel) {
+					camera_rotation.y += event.motion.xrel * 0.2f;
+					camera_rotation.x += event.motion.yrel * 0.2f;
+
+					if (camera_rotation.x >= 60.0f)
+						camera_rotation.x = 60.0f;
+					else if (camera_rotation.x <= -60.0f)
+						camera_rotation.x = -60.0f;
+				}
 			}
 		}
 	}
