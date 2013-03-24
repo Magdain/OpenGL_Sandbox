@@ -70,17 +70,15 @@ float PlaneDot(const vec4& plane, const vec3& position) {
 			plane.z * position.z +
 			plane.w;
 }
-bool CubeInFrustum(vec4 planes[6]) {
-	float x, y, z;
-	x = y = z = 0.0f;
+bool CubeInFrustum(vec4 planes[6], const vec3& position) {
+	float x = position.x;
+	float y = position.y;
+	float z = position.z;
 	float size = 1.0f;
 
 	float min_x = x - size;
 	float min_y = y - size;
 	float min_z = z - size;
-	if (min_x < 0) min_x = 0.0f;
-	if (min_y < 0) min_y = 0.0f;
-	if (min_z < 0) min_z = 0.0f;
 
 	float max_x = x + size;
 	float max_y = y + size;
@@ -107,7 +105,6 @@ bool CubeInFrustum(vec4 planes[6]) {
 	}
 	return true;
 }
-
 
 int main() {
 	SDL_Init(SDL_INIT_VIDEO);
@@ -192,7 +189,9 @@ int main() {
 	vec3 negate_z(1.0f, 1.0f, -1.0f);
 	glm::vec2 camera_rotation;
 
-	mat4 model = glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, 0.0f));
+	vec3 model_position(0.0f, 0.0f, 0.0f);
+
+	mat4 model = glm::translate(mat4(1.0f), model_position);
 	mat4 view = glm::lookAt(camera_position, camera_target, camera_up);
 	mat4 projection = glm::perspective(70.0f, 800.0f/600.0f, 0.1f, 42000.0f);
 
@@ -216,12 +215,52 @@ int main() {
 		mat4 mvp = projection * view;
 
 		vec4 planes[6];
-		planes[0] = mvp[3] + mvp[0];
-		planes[1] = mvp[3] - mvp[0];
-		planes[2] = mvp[3] - mvp[1];
-		planes[3] = mvp[3] + mvp[1];
-		planes[4] = mvp[3] + mvp[2];
-		planes[5] = mvp[3] - mvp[2];
+		//*
+		// right
+		planes[0].x = mvp[0][3] - mvp[0][2];
+		planes[0].y = mvp[1][3] - mvp[1][2];
+		planes[0].z = mvp[2][3] - mvp[2][2];
+		planes[0].w = mvp[3][3] - mvp[3][2];
+
+		// left
+		planes[1].x = mvp[0][3] + mvp[0][2];
+		planes[1].y = mvp[1][3] + mvp[1][2];
+		planes[1].z = mvp[2][3] + mvp[2][2];
+		planes[1].w = mvp[3][3] + mvp[3][2];
+
+		// bottom
+		planes[2].x = mvp[0][3] - mvp[0][0];
+		planes[2].y = mvp[1][3] - mvp[1][0];
+		planes[2].z = mvp[2][3] - mvp[2][0];
+		planes[2].w = mvp[3][3] - mvp[3][0];
+
+		// top
+		planes[3].x = mvp[0][3] + mvp[0][0];
+		planes[3].y = mvp[1][3] + mvp[1][0];
+		planes[3].z = mvp[2][3] + mvp[2][0];
+		planes[3].w = mvp[3][3] + mvp[3][0];
+
+		// far
+		planes[4].x = mvp[0][3] + mvp[0][1];
+		planes[4].y = mvp[1][3] + mvp[1][1];
+		planes[4].z = mvp[2][3] + mvp[2][1];
+		planes[4].w = mvp[3][3] + mvp[3][1];
+
+		// near
+		planes[5].x = mvp[0][3] - mvp[0][1];
+		planes[5].y = mvp[1][3] - mvp[1][1];
+		planes[5].z = mvp[2][3] - mvp[2][1];
+		planes[5].w = mvp[3][3] - mvp[3][1];
+
+		//*/
+		/*
+		planes[0] = mvp[3] - mvp[2];
+		planes[1] = mvp[3] + mvp[2];
+		planes[2] = mvp[3] - mvp[0];
+		planes[3] = mvp[3] + mvp[0];
+		planes[4] = mvp[3] + mvp[1];
+		planes[5] = mvp[3] - mvp[1];
+		//*/
 
 		for (int i = 0; i < 6; ++i) {
 			float length = glm::length(vec3(planes[i]));
@@ -229,11 +268,12 @@ int main() {
 		}
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		if (CubeInFrustum(planes)) {
+		if (CubeInFrustum(planes, model_position)) {
 			glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
 			std::cout << "draw cube" << std::endl;
-		} else
+		} else {
 			std::cout << "cull cube" << std::endl;
+		}
 		SDL_GL_SwapBuffers();
 
 
