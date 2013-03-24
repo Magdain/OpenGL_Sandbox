@@ -6,6 +6,7 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/type_ptr.hpp>
 using glm::vec3;
+using glm::vec4;
 using glm::mat4;
 
 #include <SDL.h>
@@ -61,6 +62,50 @@ void ErrorCheckProgram(GLuint program) {
 
 		std::cout << log << std::endl;
 	}
+}
+
+float PlaneDot(const vec4& plane, const vec3& position) {
+	return	plane.x * position.x +
+			plane.y * position.y +
+			plane.z * position.z +
+			plane.w;
+}
+bool CubeInFrustum(vec4 planes[6]) {
+	float x, y, z;
+	x = y = z = 0.0f;
+	float size = 1.0f;
+
+	float min_x = x - size;
+	float min_y = y - size;
+	float min_z = z - size;
+	if (min_x < 0) min_x = 0.0f;
+	if (min_y < 0) min_y = 0.0f;
+	if (min_z < 0) min_z = 0.0f;
+
+	float max_x = x + size;
+	float max_y = y + size;
+	float max_z = z + size;
+
+	for (int i = 0; i < 6; ++i) {
+		if (PlaneDot(planes[i], vec3(min_x, min_y, min_z)) >= 0.0f)
+			continue;
+		if (PlaneDot(planes[i], vec3(max_x, min_y, min_z)) >= 0.0f)
+			continue;
+		if (PlaneDot(planes[i], vec3(min_x, max_y, min_z)) >= 0.0f)
+			continue;
+		if (PlaneDot(planes[i], vec3(max_x, max_y, min_z)) >= 0.0f)
+			continue;
+		if (PlaneDot(planes[i], vec3(min_x, min_y, max_z)) >= 0.0f)
+			continue;
+		if (PlaneDot(planes[i], vec3(max_x, min_y, max_z)) >= 0.0f)
+			continue;
+		if (PlaneDot(planes[i], vec3(min_x, max_y, max_z)) >= 0.0f)
+			continue;
+		if (PlaneDot(planes[i], vec3(max_x, max_y, max_z)) >= 0.0f)
+			continue;
+		return false;
+	}
+	return true;
 }
 
 
@@ -144,9 +189,10 @@ int main() {
 	vec3 camera_position(0.0f, 0.0f, -5.0f);
 	vec3 camera_target(0.0f, 0.0f, 1.0f);
 	vec3 camera_up(0.0f, 1.0f, 0.0f);
+	vec3 negate_z(1.0f, 1.0f, -1.0f);
 	glm::vec2 camera_rotation;
 
-	mat4 model(1.0f);
+	mat4 model = glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, 0.0f));
 	mat4 view = glm::lookAt(camera_position, camera_target, camera_up);
 	mat4 projection = glm::perspective(70.0f, 800.0f/600.0f, 0.1f, 42000.0f);
 
@@ -161,16 +207,33 @@ int main() {
 	if (u_projection == -1) std::cout << "failed to find uniform 'projection'" << std::endl;
 	glUniformMatrix4fv(u_projection, 1, GL_FALSE, glm::value_ptr(projection));
 
-	vec3 negate_z(1.0f, 1.0f, -1.0f);
-
 
 	glEnable(GL_DEPTH_TEST);
 
 
 	bool running = true;
 	while (running) {
+		mat4 mvp = projection * view;
+
+		vec4 planes[6];
+		planes[0] = mvp[3] + mvp[0];
+		planes[1] = mvp[3] - mvp[0];
+		planes[2] = mvp[3] - mvp[1];
+		planes[3] = mvp[3] + mvp[1];
+		planes[4] = mvp[3] + mvp[2];
+		planes[5] = mvp[3] - mvp[2];
+
+		for (int i = 0; i < 6; ++i) {
+			float length = glm::length(vec3(planes[i]));
+			planes[i] /= length;
+		}
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
+		if (CubeInFrustum(planes)) {
+			glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
+			std::cout << "draw cube" << std::endl;
+		} else
+			std::cout << "cull cube" << std::endl;
 		SDL_GL_SwapBuffers();
 
 
