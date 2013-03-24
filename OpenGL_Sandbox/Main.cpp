@@ -100,16 +100,15 @@ int main() {
 	vec3 vertices[] = {
 		// The camera's Z value is negated when constructing our view matrix so that our
 		// world space is left handed, however our model vertices are still right handed.
+		vec3(-1.0f,  1.0f, -1.0f), // 0
+		vec3( 1.0f,  1.0f, -1.0f), // 1
+		vec3( 1.0f, -1.0f, -1.0f), // 2
+		vec3(-1.0f, -1.0f, -1.0f), // 3
 
-		vec3(-1.0f,  1.0f, -1.0f), // back
-		vec3( 1.0f,  1.0f, -1.0f),
-		vec3( 1.0f, -1.0f, -1.0f),
-		vec3(-1.0f, -1.0f, -1.0f),
-
-		vec3(-1.0f,  1.0f, 1.0f), // front
-		vec3( 1.0f,  1.0f, 1.0f),
-		vec3( 1.0f, -1.0f, 1.0f),
-		vec3(-1.0f, -1.0f, 1.0f),
+		vec3(-1.0f,  1.0f, 1.0f), // 4
+		vec3( 1.0f,  1.0f, 1.0f), // 5
+		vec3( 1.0f, -1.0f, 1.0f), // 6
+		vec3(-1.0f, -1.0f, 1.0f), // 7
 	};
 	GLuint vbo;
 	glGenBuffers(1, &vbo);
@@ -127,6 +126,14 @@ int main() {
 		2, 3, 0,
 		4, 5, 6, // front
 		6, 7, 4,
+		0, 4, 7, // left
+		7, 3, 0,
+		5, 1, 2, // right
+		2, 6, 5,
+		0, 4, 5, // top
+		5, 1, 0,
+		3, 7, 6, // bottom
+		6, 2, 3,
 	};
 	GLuint ibo;
 	glGenBuffers(1, &ibo);
