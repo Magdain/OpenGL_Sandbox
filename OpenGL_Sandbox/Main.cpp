@@ -70,19 +70,19 @@ float PlaneDot(const vec4& plane, const vec3& position) {
 			plane.z * position.z +
 			plane.w;
 }
-bool CubeInFrustum(vec4 planes[6], const vec3& position) {
+bool CubeInFrustum(vec4 planes[6], const vec3& position, const vec3& scale) {
 	float x = position.x;
 	float y = position.y;
 	float z = position.z;
 	float size = 1.0f;
 
-	float min_x = x - size;
-	float min_y = y - size;
-	float min_z = z - size;
+	float min_x = (x - size) * scale.x;
+	float min_y = (y - size) * scale.y;
+	float min_z = (z - size) * scale.z;
 
-	float max_x = x + size;
-	float max_y = y + size;
-	float max_z = z + size;
+	float max_x = (x + size) * scale.x;
+	float max_y = (y + size) * scale.y;
+	float max_z = (z + size) * scale.z;
 
 	for (int i = 0; i < 6; ++i) {
 		if (PlaneDot(planes[i], vec3(min_x, min_y, min_z)) >= 0.0f)
@@ -190,8 +190,10 @@ int main() {
 	glm::vec2 camera_rotation;
 
 	vec3 model_position(0.0f, 0.0f, 0.0f);
+	vec3 model_scale(10.0f, 10.0f, 10.0f);
 
 	mat4 model = glm::translate(mat4(1.0f), model_position);
+	model = glm::scale(model, model_scale);
 	mat4 view = glm::lookAt(camera_position, camera_target, camera_up);
 	mat4 projection = glm::perspective(70.0f, 800.0f/600.0f, 0.1f, 42000.0f);
 
@@ -268,7 +270,7 @@ int main() {
 		}
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		if (CubeInFrustum(planes, model_position)) {
+		if (CubeInFrustum(planes, model_position, model_scale)) {
 			glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
 			std::cout << "draw cube" << std::endl;
 		} else {
