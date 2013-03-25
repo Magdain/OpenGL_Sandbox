@@ -14,6 +14,7 @@ using glm::mat4;
 
 #include <iostream>
 #include <string>
+#include <array>
 
 
 #define GLSL(x) "#version 330\n" #x
@@ -63,6 +64,30 @@ void ErrorCheckProgram(GLuint program) {
 		std::cout << log << std::endl;
 	}
 }
+
+class Plane {
+public:
+	Plane() {
+
+	}
+	~Plane() {
+
+	}
+
+	void Normalize() {
+		float length = glm::length(vec3(Points));
+		Points /= length;
+	}
+
+	float Dot(const vec3& right) {
+		return	Points.x * right.x +
+				Points.y * right.y +
+				Points.z * right.z +
+				Points.w;
+	}
+
+	vec4 Points;
+};
 
 float PlaneDot(const vec4& plane, const vec3& position) {
 	return	plane.x * position.x +
@@ -254,16 +279,6 @@ int main() {
 		planes[5].z = mvp[2][3] - mvp[2][1];
 		planes[5].w = mvp[3][3] - mvp[3][1];
 
-		//*/
-		/*
-		planes[0] = mvp[3] - mvp[2];
-		planes[1] = mvp[3] + mvp[2];
-		planes[2] = mvp[3] - mvp[0];
-		planes[3] = mvp[3] + mvp[0];
-		planes[4] = mvp[3] + mvp[1];
-		planes[5] = mvp[3] - mvp[1];
-		//*/
-
 		for (int i = 0; i < 6; ++i) {
 			float length = glm::length(vec3(planes[i]));
 			planes[i] /= length;
@@ -272,9 +287,9 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		if (CubeInFrustum(planes, model_position, model_scale)) {
 			glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
-			std::cout << "draw cube" << std::endl;
+			//std::cout << "draw cube" << std::endl;
 		} else {
-			std::cout << "cull cube" << std::endl;
+			//std::cout << "cull cube" << std::endl;
 		}
 		SDL_GL_SwapBuffers();
 
