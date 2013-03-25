@@ -95,7 +95,7 @@ float PlaneDot(const vec4& plane, const vec3& position) {
 			plane.z * position.z +
 			plane.w;
 }
-bool CubeInFrustum(vec4 planes[6], const vec3& position, const vec3& scale) {
+bool CubeInFrustum(std::array<Plane, 6> planes, const vec3& position, const vec3& scale) {
 	float x = position.x;
 	float y = position.y;
 	float z = position.z;
@@ -110,21 +110,21 @@ bool CubeInFrustum(vec4 planes[6], const vec3& position, const vec3& scale) {
 	float max_z = (z + size) * scale.z;
 
 	for (int i = 0; i < 6; ++i) {
-		if (PlaneDot(planes[i], vec3(min_x, min_y, min_z)) >= 0.0f)
+		if (planes[i].Dot(vec3(min_x, min_y, min_z)) >= 0.0f)
 			continue;
-		if (PlaneDot(planes[i], vec3(max_x, min_y, min_z)) >= 0.0f)
+		if (planes[i].Dot(vec3(max_x, min_y, min_z)) >= 0.0f)
 			continue;
-		if (PlaneDot(planes[i], vec3(min_x, max_y, min_z)) >= 0.0f)
+		if (planes[i].Dot(vec3(min_x, max_y, min_z)) >= 0.0f)
 			continue;
-		if (PlaneDot(planes[i], vec3(max_x, max_y, min_z)) >= 0.0f)
+		if (planes[i].Dot(vec3(max_x, max_y, min_z)) >= 0.0f)
 			continue;
-		if (PlaneDot(planes[i], vec3(min_x, min_y, max_z)) >= 0.0f)
+		if (planes[i].Dot(vec3(min_x, min_y, max_z)) >= 0.0f)
 			continue;
-		if (PlaneDot(planes[i], vec3(max_x, min_y, max_z)) >= 0.0f)
+		if (planes[i].Dot(vec3(max_x, min_y, max_z)) >= 0.0f)
 			continue;
-		if (PlaneDot(planes[i], vec3(min_x, max_y, max_z)) >= 0.0f)
+		if (planes[i].Dot(vec3(min_x, max_y, max_z)) >= 0.0f)
 			continue;
-		if (PlaneDot(planes[i], vec3(max_x, max_y, max_z)) >= 0.0f)
+		if (planes[i].Dot(vec3(max_x, max_y, max_z)) >= 0.0f)
 			continue;
 		return false;
 	}
@@ -215,7 +215,7 @@ int main() {
 	glm::vec2 camera_rotation;
 
 	vec3 model_position(0.0f, 0.0f, 0.0f);
-	vec3 model_scale(10.0f, 10.0f, 10.0f);
+	vec3 model_scale(1.0f, 1.0f, 1.0f);
 
 	mat4 model = glm::translate(mat4(1.0f), model_position);
 	model = glm::scale(model, model_scale);
@@ -233,63 +233,60 @@ int main() {
 	if (u_projection == -1) std::cout << "failed to find uniform 'projection'" << std::endl;
 	glUniformMatrix4fv(u_projection, 1, GL_FALSE, glm::value_ptr(projection));
 
+	std::array<Plane, 6> planes;
+
 
 	glEnable(GL_DEPTH_TEST);
-
 
 	bool running = true;
 	while (running) {
 		mat4 mvp = projection * view;
 
-		vec4 planes[6];
-		//*
 		// right
-		planes[0].x = mvp[0][3] - mvp[0][2];
-		planes[0].y = mvp[1][3] - mvp[1][2];
-		planes[0].z = mvp[2][3] - mvp[2][2];
-		planes[0].w = mvp[3][3] - mvp[3][2];
+		planes[0].Points.x = mvp[0][3] - mvp[0][2];
+		planes[0].Points.y = mvp[1][3] - mvp[1][2];
+		planes[0].Points.z = mvp[2][3] - mvp[2][2];
+		planes[0].Points.w = mvp[3][3] - mvp[3][2];
 
 		// left
-		planes[1].x = mvp[0][3] + mvp[0][2];
-		planes[1].y = mvp[1][3] + mvp[1][2];
-		planes[1].z = mvp[2][3] + mvp[2][2];
-		planes[1].w = mvp[3][3] + mvp[3][2];
+		planes[1].Points.x = mvp[0][3] + mvp[0][2];
+		planes[1].Points.y = mvp[1][3] + mvp[1][2];
+		planes[1].Points.z = mvp[2][3] + mvp[2][2];
+		planes[1].Points.w = mvp[3][3] + mvp[3][2];
 
 		// bottom
-		planes[2].x = mvp[0][3] - mvp[0][0];
-		planes[2].y = mvp[1][3] - mvp[1][0];
-		planes[2].z = mvp[2][3] - mvp[2][0];
-		planes[2].w = mvp[3][3] - mvp[3][0];
+		planes[2].Points.x = mvp[0][3] - mvp[0][0];
+		planes[2].Points.y = mvp[1][3] - mvp[1][0];
+		planes[2].Points.z = mvp[2][3] - mvp[2][0];
+		planes[2].Points.w = mvp[3][3] - mvp[3][0];
 
 		// top
-		planes[3].x = mvp[0][3] + mvp[0][0];
-		planes[3].y = mvp[1][3] + mvp[1][0];
-		planes[3].z = mvp[2][3] + mvp[2][0];
-		planes[3].w = mvp[3][3] + mvp[3][0];
+		planes[3].Points.x = mvp[0][3] + mvp[0][0];
+		planes[3].Points.y = mvp[1][3] + mvp[1][0];
+		planes[3].Points.z = mvp[2][3] + mvp[2][0];
+		planes[3].Points.w = mvp[3][3] + mvp[3][0];
 
 		// far
-		planes[4].x = mvp[0][3] + mvp[0][1];
-		planes[4].y = mvp[1][3] + mvp[1][1];
-		planes[4].z = mvp[2][3] + mvp[2][1];
-		planes[4].w = mvp[3][3] + mvp[3][1];
+		planes[4].Points.x = mvp[0][3] + mvp[0][1];
+		planes[4].Points.y = mvp[1][3] + mvp[1][1];
+		planes[4].Points.z = mvp[2][3] + mvp[2][1];
+		planes[4].Points.w = mvp[3][3] + mvp[3][1];
 
 		// near
-		planes[5].x = mvp[0][3] - mvp[0][1];
-		planes[5].y = mvp[1][3] - mvp[1][1];
-		planes[5].z = mvp[2][3] - mvp[2][1];
-		planes[5].w = mvp[3][3] - mvp[3][1];
+		planes[5].Points.x = mvp[0][3] - mvp[0][1];
+		planes[5].Points.y = mvp[1][3] - mvp[1][1];
+		planes[5].Points.z = mvp[2][3] - mvp[2][1];
+		planes[5].Points.w = mvp[3][3] - mvp[3][1];
 
-		for (int i = 0; i < 6; ++i) {
-			float length = glm::length(vec3(planes[i]));
-			planes[i] /= length;
-		}
+		for (int i = 0; i < 6; ++i)
+			planes[i].Normalize();
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		if (CubeInFrustum(planes, model_position, model_scale)) {
 			glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
-			//std::cout << "draw cube" << std::endl;
+			std::cout << "draw cube" << std::endl;
 		} else {
-			//std::cout << "cull cube" << std::endl;
+			std::cout << "cull cube" << std::endl;
 		}
 		SDL_GL_SwapBuffers();
 
