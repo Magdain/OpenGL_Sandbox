@@ -37,10 +37,10 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\glew\include;C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\glm;C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\SDL\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\assimp\include;C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\glew\include;C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\glm;C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\SDL\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LibraryPath>C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\glew\lib;C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\SDL\lib\x86;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\assimp\lib\assimp_release-dll_win32;C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\glew\lib;C:\Users\magdain\Documents\Visual Studio 2010\__Libraries\SDL\lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -49,7 +49,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glew32.lib;SDL.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glew32.lib;SDL.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>

@@ -5,12 +5,18 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/type_ptr.hpp>
+using glm::vec2;
 using glm::vec3;
 using glm::mat4;
+
+#include <assimp/scene.h>
+#include <assimp/cimport.h>
+#include <assimp/postprocess.h>
 
 #include <SDL.h>
 #undef main
 
+#include <vector>
 #include <iostream>
 #include <string>
 
@@ -64,6 +70,48 @@ void ErrorCheckProgram(GLuint program) {
 }
 
 
+struct MeshData {
+	std::vector<vec3> Vertices;
+	std::vector<vec3> Normals;
+	std::vector<vec2> TextureCoords;
+	std::vector<GLushort> Indices;
+};
+
+void LoadMeshData(const std::string& filename, MeshData& data) {
+	const aiScene* scene = aiImportFile(filename.c_str(), aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs);
+	for (unsigned int meshNumber = 0; meshNumber < scene->mNumMeshes; ++meshNumber) {
+		const aiMesh* mesh = scene->mMeshes[meshNumber];
+		for (unsigned int vertNumber = 0; vertNumber < mesh->mNumVertices; ++vertNumber) {
+			const aiVector3D verts = mesh->mVertices[vertNumber];
+			data.Vertices.push_back(vec3(verts.x, verts.y, verts.z));
+
+			if (mesh->HasNormals()) {
+				const aiVector3D normals = mesh->mNormals[vertNumber];
+				data.Normals.push_back(vec3(normals.x, normals.y, normals.z));
+			}
+
+			if (mesh->HasTextureCoords(0)) {
+				const aiVector3D uvs = mesh->mTextureCoords[0][vertNumber];
+				data.TextureCoords.push_back(vec2(uvs.x, uvs.y));
+			}
+		}
+		for (unsigned int faceNumber = 0; faceNumber < mesh->mNumFaces; ++faceNumber) {
+			const aiFace* face = &mesh->mFaces[faceNumber];
+			for (unsigned int faceIndex = 0; faceIndex < face->mNumIndices; ++faceIndex) {
+				data.Indices.push_back(face->mIndices[faceIndex]);
+			}
+		}
+	}
+
+	// Assimp's GenUVCoords post process doesn't seem to work, but that's fine.
+	// If a mesh doesn't have UV coordinates then practically we're just going
+	// to apply a 1x1 white pixel texture to it, which works just fine with
+	// a garbage uv coordinate.
+	if (data.TextureCoords.size() == 0)
+		data.TextureCoords.push_back(vec2(0.0f, 0.0f));
+}
+
+
 int main() {
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_SetVideoMode(800, 600, 16, SDL_OPENGL);
@@ -97,6 +145,10 @@ int main() {
 	ErrorCheckProgram(program);
 
 
+	MeshData mesh;
+	LoadMeshData("Assets/Sphere.ply", mesh);
+
+	/*
 	vec3 vertices[] = {
 		// The camera's Z value is negated when constructing our view matrix so that our
 		// world space is left handed, however our model vertices are still right handed.
@@ -110,10 +162,12 @@ int main() {
 		vec3( 1.0f, -1.0f, 1.0f), // 6
 		vec3(-1.0f, -1.0f, 1.0f), // 7
 	};
+	//*/
 	GLuint vbo;
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, mesh.Vertices.size() * sizeof(mesh.Vertices[0]), &mesh.Vertices[0], GL_STATIC_DRAW);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
 
 	GLint position = glGetAttribLocation(program, "position");
 	if (position == -1) std::cout << "failed to find attrib 'position'" << std::endl;
@@ -121,6 +175,7 @@ int main() {
 	glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
 
+	/*
 	GLushort indices[] = {
 		0, 1, 2, // back
 		2, 3, 0,
@@ -135,10 +190,12 @@ int main() {
 		3, 7, 6, // bottom
 		6, 2, 3,
 	};
+	//*/
 	GLuint ibo;
 	glGenBuffers(1, &ibo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.Indices.size() * sizeof(mesh.Indices[0]), &mesh.Indices[0], GL_STATIC_DRAW);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices, GL_STATIC_DRAW);
 
 
 	vec3 camera_position(0.0f, 0.0f, -5.0f);
@@ -170,7 +227,8 @@ int main() {
 	bool running = true;
 	while (running) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
+		glDrawElements(GL_TRIANGLES, mesh.Indices.size(), GL_UNSIGNED_SHORT, nullptr);
+		//glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
 		SDL_GL_SwapBuffers();
 
 
@@ -207,7 +265,7 @@ int main() {
 				if (event.key.keysym.sym == SDLK_ESCAPE)
 					running = false;
 			}
-			if (event.type == SDL_MOUSEMOTION) {
+			if (event.type == SDL_MOUSEMOTION && SDL_GetAppState() & SDL_APPINPUTFOCUS) {
 				if (event.motion.x != event.motion.xrel && event.motion.y != event.motion.yrel) {
 					camera_rotation.y += event.motion.xrel * 0.2f;
 					camera_rotation.x += event.motion.yrel * 0.2f;
