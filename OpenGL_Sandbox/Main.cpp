@@ -47,8 +47,14 @@ std::string fragmentSource(GLSL(
 	in vec3 frag_normal;
 	in vec3 frag_vertex;
 
-	vec3 lightPosition = vec3(0.0, 150.0, 0.0);
-	vec3 lightColor = vec3(1.0, 1.0, 1.0);
+
+	vec3 scene_ambient = vec3(0.2, 0.2, 0.2);
+
+	vec3 light_position = vec3(0.0, 15.0, 0.0);
+	vec3 light_color = vec3(1.0, 1.0, 1.0);
+
+	vec3 model_diffuse = vec3(1.0, 0.0, 0.0);
+
 
 	out vec4 Color;
 
@@ -58,13 +64,12 @@ std::string fragmentSource(GLSL(
 
 		vec3 frag_position = vec3(model * vec4(frag_vertex, 1));
 
-		vec3 surfaceToLight = lightPosition - frag_position;
+		vec3 surfaceToLight = light_position - frag_position;
 
 		float brightness = dot(normal, surfaceToLight) / length(surfaceToLight);
 		brightness = clamp(brightness, 0, 1);
 
-		Color = brightness * vec4(lightColor, 1) * vec4(1.0, 0.0, 0.0, 1.0);
-		//Color = vec4(1.0, 0.0, 0.0, 1.0);
+		Color = brightness * vec4(light_color, 1) * vec4(1.0, 0.0, 0.0, 1.0);
 	}
 ));
 
