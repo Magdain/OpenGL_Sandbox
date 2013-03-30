@@ -24,20 +24,47 @@ using glm::mat4;
 #define GLSL(x) "#version 330\n" #x
 
 std::string vertexSource(GLSL(
-	in vec3 position;
-
 	uniform mat4 model;
 	uniform mat4 view;
 	uniform mat4 projection;
 
+	in vec3 position;
+	in vec3 normal;
+
+	out vec3 frag_normal;
+	out vec3 frag_vertex;
+
 	void main() {
+		frag_normal = normal;
+		frag_vertex = position;
+
 		gl_Position = projection * view * model * vec4(position, 1.0); 
 	}
 ));
 std::string fragmentSource(GLSL(
+	uniform mat4 model;
+
+	in vec3 frag_normal;
+	in vec3 frag_vertex;
+
+	vec3 lightPosition = vec3(0.0, 150.0, 0.0);
+	vec3 lightColor = vec3(1.0, 1.0, 1.0);
+
 	out vec4 Color;
+
 	void main() {
-		Color = vec4(1.0, 0.0, 0.0, 1.0);
+		mat3 normalMatrix = transpose(inverse(mat3(model)));
+		vec3 normal = normalize(normalMatrix * frag_normal);
+
+		vec3 frag_position = vec3(model * vec4(frag_vertex, 1));
+
+		vec3 surfaceToLight = lightPosition - frag_position;
+
+		float brightness = dot(normal, surfaceToLight) / length(surfaceToLight);
+		brightness = clamp(brightness, 0, 1);
+
+		Color = brightness * vec4(lightColor, 1) * vec4(1.0, 0.0, 0.0, 1.0);
+		//Color = vec4(1.0, 0.0, 0.0, 1.0);
 	}
 ));
 
@@ -148,26 +175,11 @@ int main() {
 	MeshData mesh;
 	LoadMeshData("Assets/Sphere.ply", mesh);
 
-	/*
-	vec3 vertices[] = {
-		// The camera's Z value is negated when constructing our view matrix so that our
-		// world space is left handed, however our model vertices are still right handed.
-		vec3(-1.0f,  1.0f, -1.0f), // 0
-		vec3( 1.0f,  1.0f, -1.0f), // 1
-		vec3( 1.0f, -1.0f, -1.0f), // 2
-		vec3(-1.0f, -1.0f, -1.0f), // 3
 
-		vec3(-1.0f,  1.0f, 1.0f), // 4
-		vec3( 1.0f,  1.0f, 1.0f), // 5
-		vec3( 1.0f, -1.0f, 1.0f), // 6
-		vec3(-1.0f, -1.0f, 1.0f), // 7
-	};
-	//*/
 	GLuint vbo;
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, mesh.Vertices.size() * sizeof(mesh.Vertices[0]), &mesh.Vertices[0], GL_STATIC_DRAW);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
 
 	GLint position = glGetAttribLocation(program, "position");
 	if (position == -1) std::cout << "failed to find attrib 'position'" << std::endl;
@@ -175,32 +187,27 @@ int main() {
 	glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
 
-	/*
-	GLushort indices[] = {
-		0, 1, 2, // back
-		2, 3, 0,
-		4, 5, 6, // front
-		6, 7, 4,
-		0, 4, 7, // left
-		7, 3, 0,
-		5, 1, 2, // right
-		2, 6, 5,
-		0, 4, 5, // top
-		5, 1, 0,
-		3, 7, 6, // bottom
-		6, 2, 3,
-	};
-	//*/
+	GLuint nbo;
+	glGenBuffers(1, &nbo);
+	glBindBuffer(GL_ARRAY_BUFFER, nbo);
+	glBufferData(GL_ARRAY_BUFFER, mesh.Normals.size() * sizeof(mesh.Normals[0]), &mesh.Normals[0], GL_STATIC_DRAW);
+
+	GLint normal = glGetAttribLocation(program, "normal");
+	if (normal == -1) std::cout << "failed to find attrib 'normal'" << std::endl;
+	glEnableVertexAttribArray(normal);
+	glVertexAttribPointer(normal, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+
 	GLuint ibo;
 	glGenBuffers(1, &ibo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.Indices.size() * sizeof(mesh.Indices[0]), &mesh.Indices[0], GL_STATIC_DRAW);
-	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices, GL_STATIC_DRAW);
 
 
 	vec3 camera_position(0.0f, 0.0f, -5.0f);
 	vec3 camera_target(0.0f, 0.0f, 1.0f);
 	vec3 camera_up(0.0f, 1.0f, 0.0f);
+	vec3 negate_z(1.0f, 1.0f, -1.0f);
 	glm::vec2 camera_rotation;
 
 	mat4 model(1.0f);
@@ -218,8 +225,6 @@ int main() {
 	if (u_projection == -1) std::cout << "failed to find uniform 'projection'" << std::endl;
 	glUniformMatrix4fv(u_projection, 1, GL_FALSE, glm::value_ptr(projection));
 
-	vec3 negate_z(1.0f, 1.0f, -1.0f);
-
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -228,7 +233,6 @@ int main() {
 	while (running) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDrawElements(GL_TRIANGLES, mesh.Indices.size(), GL_UNSIGNED_SHORT, nullptr);
-		//glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_SHORT, nullptr);
 		SDL_GL_SwapBuffers();
 
 
