@@ -48,12 +48,14 @@ std::string fragmentSource(GLSL(
 	in vec3 frag_vertex;
 
 
-	vec3 scene_ambient = vec3(0.2, 0.2, 0.2);
+	vec4 scene_ambient = vec4(0.2, 0.2, 0.2, 1.0);
 
-	vec3 light_position = vec3(0.0, 15.0, 0.0);
-	vec3 light_color = vec3(1.0, 1.0, 1.0);
+	vec3 light_position = vec3(0.0, 15.0, 15.0);
+	vec4 light_specular = vec4(1.0, 1.0, 1.0, 1.0);
 
-	vec3 model_diffuse = vec3(1.0, 0.0, 0.0);
+	vec4 model_diffuse = vec4(1.0, 0.0, 0.0, 1.0);
+	vec4 model_ambient = vec4(1.0, 1.0, 1.0, 1.0);
+	vec4 model_specular = vec4(1.0, 1.0, 1.0, 1.0);
 
 
 	out vec4 Color;
@@ -61,15 +63,13 @@ std::string fragmentSource(GLSL(
 	void main() {
 		mat3 normalMatrix = transpose(inverse(mat3(model)));
 		vec3 normal = normalize(normalMatrix * frag_normal);
-
-		vec3 frag_position = vec3(model * vec4(frag_vertex, 1));
-
+		vec3 frag_position = vec3(model * vec4(frag_vertex, 1.0));
 		vec3 surfaceToLight = light_position - frag_position;
 
 		float brightness = dot(normal, surfaceToLight) / length(surfaceToLight);
-		brightness = clamp(brightness, 0, 1);
+		brightness = clamp(brightness, 0.0, 1.0);
 
-		Color = brightness * vec4(light_color, 1) * vec4(1.0, 0.0, 0.0, 1.0);
+		Color = max(brightness * light_specular * model_diffuse, scene_ambient * model_diffuse);
 	}
 ));
 
@@ -178,7 +178,7 @@ int main() {
 
 
 	MeshData mesh;
-	LoadMeshData("Assets/Sphere.ply", mesh);
+	LoadMeshData("Assets/Smoothzanne.obj", mesh);
 
 
 	GLuint vbo;
