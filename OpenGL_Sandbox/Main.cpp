@@ -54,8 +54,6 @@ std::string fragmentSource(GLSL(
 	vec4 light_specular = vec4(1.0, 1.0, 1.0, 1.0);
 
 	vec4 model_diffuse = vec4(1.0, 0.0, 0.0, 1.0);
-	vec4 model_ambient = vec4(1.0, 1.0, 1.0, 1.0);
-	vec4 model_specular = vec4(1.0, 1.0, 1.0, 1.0);
 
 
 	out vec4 Color;
@@ -70,6 +68,26 @@ std::string fragmentSource(GLSL(
 		brightness = clamp(brightness, 0.0, 1.0);
 
 		Color = max(brightness * light_specular * model_diffuse, scene_ambient * model_diffuse);
+	}
+));
+
+std::string vertexDirectional(GLSL(
+	uniform mat4 model;
+	uniform mat4 view;
+	uniform mat4 projection;
+
+	in vec3 position;
+	//in vec3 normal;
+
+	void main() {
+		gl_Position = projection * view * model * vec4(position, 1.0);
+	}
+));
+std::string fragmentDirectional(GLSL(
+	out vec4 Color;
+
+	void main() {
+		Color = vec4(0.0, 1.0, 1.0, 1.0);
 	}
 ));
 
@@ -158,13 +176,15 @@ int main() {
 
 
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	const char* vs_str = vertexSource.c_str();
+	//const char* vs_str = vertexSource.c_str();
+	const char* vs_str = vertexDirectional.c_str();
 	glShaderSource(vertexShader, 1, &vs_str, nullptr);
 	glCompileShader(vertexShader);
 	ErrorCheckShader(vertexShader);
 
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	const char* fs_str = fragmentSource.c_str();
+	//const char* fs_str = fragmentSource.c_str();
+	const char* fs_str = fragmentDirectional.c_str();
 	glShaderSource(fragmentShader, 1, &fs_str, nullptr);
 	glCompileShader(fragmentShader);
 	ErrorCheckShader(fragmentShader);
@@ -178,7 +198,7 @@ int main() {
 
 
 	MeshData mesh;
-	LoadMeshData("Assets/Smoothzanne.obj", mesh);
+	LoadMeshData("Assets/UtahTeapot.obj", mesh);
 
 
 	GLuint vbo;
@@ -215,7 +235,7 @@ int main() {
 	vec3 negate_z(1.0f, 1.0f, -1.0f);
 	glm::vec2 camera_rotation;
 
-	mat4 model(1.0f);
+	mat4 model(1.0f); //= glm::rotate(mat4(1.0f), 90.0f, vec3(1.0f, 0.0f, 0.0f));
 	mat4 view = glm::lookAt(camera_position, camera_target, camera_up);
 	mat4 projection = glm::perspective(70.0f, 800.0f/600.0f, 0.1f, 42000.0f);
 
