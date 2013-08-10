@@ -23,6 +23,7 @@ using glm::mat4;
 
 #define GLSL(x) "#version 330\n" #x
 
+/*
 std::string vertexSource(GLSL(
 	uniform mat4 model;
 	uniform mat4 view;
@@ -50,7 +51,7 @@ std::string fragmentSource(GLSL(
 
 	vec4 scene_ambient = vec4(0.2, 0.2, 0.2, 1.0);
 
-	vec3 light_position = vec3(0.0, 15.0, 15.0);
+	vec3 light_position = vec3(0.0, 150.0, 150.0);
 	vec4 light_specular = vec4(1.0, 1.0, 1.0, 1.0);
 
 	vec4 model_diffuse = vec4(1.0, 0.0, 0.0, 1.0);
@@ -70,24 +71,66 @@ std::string fragmentSource(GLSL(
 		Color = max(brightness * light_specular * model_diffuse, scene_ambient * model_diffuse);
 	}
 ));
-
-std::string vertexDirectional(GLSL(
+//*/
+std::string vertexSource(GLSL(
 	uniform mat4 model;
 	uniform mat4 view;
 	uniform mat4 projection;
 
 	in vec3 position;
-	//in vec3 normal;
+	in vec3 normal;
+
+	out vec3 frag_normal;
+	out vec3 frag_vertex;
 
 	void main() {
-		gl_Position = projection * view * model * vec4(position, 1.0);
+		frag_normal = normal;
+		frag_vertex = position;
+
+		gl_Position = projection * view * model * vec4(position, 1.0); 
 	}
 ));
-std::string fragmentDirectional(GLSL(
+std::string fragmentSource(GLSL(
+	uniform mat4 model;
+	uniform mat4 view;
+
+	in vec3 frag_normal;
+	in vec3 frag_vertex;
+
+
+
+	vec3 light_position = vec3(0.0, 2.0, 2.0);
+
+	vec4 scene_ambient = vec4(0.2, 0.2, 0.2, 1.0);
+	vec4 model_diffuse = vec4(1.0, 0.0, 0.0, 1.0);
+	vec4 model_specular = vec4(1.0, 1.0, 1.0, 1.0);
+
+
 	out vec4 Color;
 
-	void main() {
-		Color = vec4(0.0, 1.0, 1.0, 1.0);
+	void main()
+	{
+		vec3 dir = (vec4(0.0, 0.0, 1.0, 1.0) * view).xyz;
+
+		float amb = 0.2;
+		float diff = 0.0;
+		float spec = 0.0;
+
+		diff += max(
+		dot(frag_normal,  light_position)/
+		dot(light_position, light_position),
+		0.0
+		);
+		float k = dot(frag_normal, light_position);
+		vec3 r = 2.0*k*frag_normal - light_position;
+		spec += pow(max(
+		dot(normalize(r), dir),
+		0.0
+		), 32.0 * dot(r, r));
+
+		Color = 
+		vec4(1.0, 0.1, 0.3, 1.0)*(amb+diff)+
+		vec4(1.0, 1.0, 1.0, 1.0)*spec;
 	}
 ));
 
@@ -176,15 +219,13 @@ int main() {
 
 
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	//const char* vs_str = vertexSource.c_str();
-	const char* vs_str = vertexDirectional.c_str();
+	const char* vs_str = vertexSource.c_str();
 	glShaderSource(vertexShader, 1, &vs_str, nullptr);
 	glCompileShader(vertexShader);
 	ErrorCheckShader(vertexShader);
 
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	//const char* fs_str = fragmentSource.c_str();
-	const char* fs_str = fragmentDirectional.c_str();
+	const char* fs_str = fragmentSource.c_str();
 	glShaderSource(fragmentShader, 1, &fs_str, nullptr);
 	glCompileShader(fragmentShader);
 	ErrorCheckShader(fragmentShader);
